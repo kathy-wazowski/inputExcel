@@ -171,7 +171,16 @@ function App() {
   const handleDownloadDb = async () => {
     const data = await fetchDbData();
     if (data && data.length > 0) {
-      const worksheet = XLSX.utils.json_to_sheet(data);
+      // Create a unique set of all headers from all rows
+      const allHeaders = new Set();
+      data.forEach(row => {
+        Object.keys(row).forEach(key => {
+          allHeaders.add(key);
+        });
+      });
+      const sortedHeaders = sortHeaders(allHeaders);
+
+      const worksheet = XLSX.utils.json_to_sheet(data, { header: sortedHeaders });
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'DatabaseData');
       XLSX.writeFile(workbook, 'database_export.xlsx');
