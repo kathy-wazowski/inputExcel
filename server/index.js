@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const db = require('./database'); // Import the database connection
+const { db, clearDatabase } = require('./database'); // Import the database connection
 
 const app = express();
 const port = 3001;
@@ -46,24 +46,68 @@ app.post('/save-data', (req, res) => {
     });
     
     // Endpoint to retrieve all data from the database
-    app.get('/get-data', (req, res) => {
-      db.all('SELECT row_data FROM excel_data ORDER BY id', [], (err, rows) => {
-        if (err) {
-          console.error('Error querying database:', err.message);
-          return res.status(500).json({ message: 'Failed to retrieve data.' });
-        }
-        
-        // The 'row_data' is stored as a JSON string, so we need to parse it.
-        const data = rows.map(row => JSON.parse(row.row_data));
-        
-        res.status(200).json({
-          message: 'Data retrieved successfully.',
-          data: data,
-        });
-      });
-    });
+app.get('/get-data', (req, res) => {
+  db.all('SELECT row_data FROM excel_data ORDER BY id', [], (err, rows) => {
+    if (err) {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ message: 'Failed to retrieve data.' });
+    }
     
-    app.listen(port, () => {
-      console.log(`Server listening at http://localhost:${port}`);
+    // The 'row_data' is stored as a JSON string, so we need to parse it.
+    const data = rows.map(row => JSON.parse(row.row_data));
+    
+    res.status(200).json({
+      message: 'Data retrieved successfully.',
+      data: data,
     });
+  });
+});
+
+// Endpoint to clear the database
+app.post('/clear-data', (req, res) => {
+  console.log('Received request to clear database.'); // Added for debugging
+  clearDatabase((err) => {
+    if (err) {
+      console.error('Error clearing database:', err.message);
+      return res.status(500).json({ message: 'Failed to clear database.' });
+    }
+    res.status(200).json({ message: 'Database cleared successfully.' });
+  });
+});
+
+// Endpoint for searching
+app.get('/search', (req, res) => {
+  const { term } = req.query;
+
+  if (!term) {
+    return res.status(400).json({ message: 'Search term is required.' });
+  }
+
+  db.all('SELECT row_data FROM excel_data', [], (err, rows) => {
+    if (err) {
+      console.error('Error querying database:', err.message);
+      return res.status(500).json({ message: 'Failed to retrieve data for searching.' });
+    }
+
+    const allData = rows.map(row => JSON.parse(row.row_data));
+    
+    const lowercasedTerm = term.toLowerCase();
+
+    const filteredData = allData.filter(row => {
+      const ref = row.ref ? String(row.ref).toLowerCase() : '';
+      const ref2 = row.ref2 ? String(row.ref2).toLowerCase() : '';
+      const ref3 = row.ref3 ? String(row.ref3).toLowerCase() : '';
+      return ref.includes(lowercasedTerm) || ref2.includes(lowercasedTerm) || ref3.includes(lowercasedTerm);
+    });
+
+    res.status(200).json({
+      message: 'Search completed.',
+      data: filteredData,
+    });
+  });
+});
+
+app.listen(port, () => {
+  console.log(`Server listening at http://localhost:${port}`);
+});
     

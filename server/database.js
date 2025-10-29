@@ -23,4 +23,27 @@ const db = new sqlite3.Database('./database.db', (err) => {
   }
 });
 
-module.exports = db;
+const clearDatabase = (callback) => {
+  console.log('Clearing database...'); // Added for debugging
+  db.serialize(() => {
+    console.log('Executing DELETE FROM excel_data'); // Added for debugging
+    db.run('DELETE FROM excel_data', (err) => {
+      if (err) {
+        console.error('Error deleting from excel_data:', err.message);
+        return callback(err);
+      }
+      // Reset the autoincrement sequence for the excel_data table
+      console.log('Executing DELETE FROM sqlite_sequence'); // Added for debugging
+      db.run('DELETE FROM sqlite_sequence WHERE name=\'excel_data\'', (err) => {
+        if (err) {
+          console.error('Error deleting from sqlite_sequence:', err.message);
+          return callback(err);
+        }
+        console.log('Database cleared and sequence reset.');
+        callback(null);
+      });
+    });
+  });
+};
+
+module.exports = { db, clearDatabase };
